@@ -72,6 +72,7 @@
             border-radius: 50%;
             margin-right: 15px;
             flex-shrink: 0;
+            background-color: #ccc; /* Цвет по умолчанию */
         }
 
         .user-details strong { font-size: 1.1rem; color: #222; }
@@ -85,10 +86,10 @@
         <div id="myInfo">Загрузка данных...</div>
         
         <div class="button-grid">
-            <button class="btn-study" onclick="changeStatus('📚 Учусь', '#28a745')">📚 Учусь</button>
-            <button class="btn-coffee" onclick="changeStatus('☕ Кофе', '#ffc107')">☕ Кофе</button>
-            <button class="btn-game" onclick="changeStatus('🎮 В игре', '#17a2b8')">🎮 В игре</button>
-            <button class="btn-home" onclick="changeStatus('🏠 Дома', '#6c757d')">🏠 Дома</button>
+            <button class="btn-study" onclick="changeStatus('📚 Учусь')">📚 Учусь</button>
+            <button class="btn-coffee" onclick="changeStatus('☕ Кофе')">☕ Кофе</button>
+            <button class="btn-game" onclick="changeStatus('🎮 В игре')">🎮 В игре</button>
+            <button class="btn-home" onclick="changeStatus('🏠 Дома')">🏠 Дома</button>
         </div>
     </div>
 
@@ -107,11 +108,11 @@
 
         const supabase = createClient(URL, KEY);
 
-        // Функция обновления статуса
-        window.changeStatus = async (text, color) => {
+        // Функция обновления статуса (без колонки color)
+        window.changeStatus = async (text) => {
             const { error } = await supabase
                 .from('monitor') 
-                .update({ status: text, color: color })
+                .update({ status: text })
                 .eq('id', MY_ID);
 
             if (error) {
@@ -137,7 +138,7 @@
             const list = document.getElementById('groupList');
             list.innerHTML = data.map(user => `
                 <div class="user-item">
-                    <div class="status-dot" style="background: ${user.color || '#ccc'}"></div>
+                    <div class="status-dot"></div>
                     <div class="user-details">
                         <strong>${user.username}</strong>
                         <small>${user.status || 'Статус не задан'}</small>
