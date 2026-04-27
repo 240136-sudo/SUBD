@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Монитор статусов группы</title>
     <style>
-        /* CSS: Оформление как на твоих скриншотах */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f0f2f5;
@@ -30,7 +29,6 @@
         h2 { margin-top: 0; color: #333; }
         #myInfo { margin-bottom: 20px; color: #666; font-size: 0.95rem; }
 
-        /* Сетка кнопок 2x2 */
         .button-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -53,15 +51,12 @@
         }
 
         button:hover { opacity: 0.85; transform: translateY(-1px); }
-        button:active { transform: translateY(1px); }
 
-        /* Цвета кнопок */
         .btn-study { background-color: #28a745; }
         .btn-coffee { background-color: #ffc107; color: #000; }
         .btn-game { background-color: #17a2b8; }
         .btn-home { background-color: #6c757d; }
 
-        /* Стили списка пользователей */
         .user-item {
             display: flex;
             align-items: center;
@@ -69,8 +64,6 @@
             border-bottom: 1px solid #eee;
             text-align: left;
         }
-
-        .user-item:last-child { border-bottom: none; }
 
         .status-dot {
             width: 14px;
@@ -88,7 +81,7 @@
 
     <div class="card">
         <h2>Мой профиль</h2>
-        <div id="myInfo">Загрузка данных профиля...</div>
+        <div id="myInfo">Загрузка данных...</div>
         
         <div class="button-grid">
             <button class="btn-study" onclick="changeStatus('📚 Учусь', '#28a745')">📚 Учусь</button>
@@ -100,49 +93,42 @@
 
     <div class="card">
         <h2>Монитор группы</h2>
-        <div id="groupList">
-            </div>
+        <div id="groupList"></div>
     </div>
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-        // --- ДАННЫЕ С ТВОИХ СКРИНШОТОВ ---
-        // 1. Твой URL проекта
         const URL = 'https://utdywixvtzjsaqxtqxrt.supabase.co'; 
-        // 2. Твой ANON KEY
         const KEY = 'sb_publishable_ThtftS6uBeaKf8FyndIFtg_O0HMJ5yh'; 
-        // 3. Твой личный ID из таблицы monitor
-        const MY_ID = 'd50f580a-a6c7-4d32-ae6a-8e114d3e13a3'; 
+        
+        // ВАЖНО: На твоем скриншоте d9fa6e.png ID теперь число! 
+        // Если ты в таблице под номером 1, оставляем 1 без кавычек.
+        const MY_ID = 1; 
 
         const supabase = createClient(URL, KEY);
 
-        // Функция обновления твоего статуса
         window.changeStatus = async (text, color) => {
             const { error } = await supabase
-                .from('monitor') // Имя таблицы со скринов RLS
+                .from('monitor') 
                 .update({ status: text, color: color })
                 .eq('id', MY_ID);
 
             if (error) {
-                alert("Ошибка! Проверь настройки RLS или название таблицы.");
-                console.error("Ошибка обновления:", error);
+                alert("Ошибка! Проверь RLS или ID.");
+                console.error(error);
             } else {
-                fetchGroup(); // Сразу обновляем список после нажатия
+                fetchGroup();
             }
         };
 
-        // Функция получения данных всей группы
         async function fetchGroup() {
             const { data, error } = await supabase
-                .from('monitor') // Имя таблицы со скринов RLS
+                .from('monitor')
                 .select('*')
-                .order('username', { ascending: true });
+                .order('id', { ascending: true });
 
-            if (error) {
-                console.error("Ошибка загрузки:", error);
-                return;
-            }
+            if (error) return console.error(error);
 
             const list = document.getElementById('groupList');
             list.innerHTML = data.map(user => `
@@ -155,17 +141,13 @@
                 </div>
             `).join('');
 
-            // Находим тебя в списке, чтобы обновить приветствие
             const me = data.find(u => u.id === MY_ID);
             if (me) {
                 document.getElementById('myInfo').innerText = `Вы зашли как: ${me.username}`;
             }
         }
 
-        // Запускаем при открытии страницы
         fetchGroup();
-
-        // Авто-обновление каждые 5 секунд (синхронизация с другими)
         setInterval(fetchGroup, 5000);
     </script>
 </body>
