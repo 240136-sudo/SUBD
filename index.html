@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Монитор статусов группы</title>
     <style>
-        /* CSS стили для оформления */
+        /* CSS: Оформление как на твоих скриншотах */
         body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f4f7f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -19,30 +19,18 @@
         .card {
             background: white;
             border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             padding: 25px;
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
             margin-bottom: 20px;
             text-align: center;
         }
 
-        h2 {
-            margin-top: 0;
-            color: #333;
-            font-size: 1.4rem;
-        }
+        h2 { margin-top: 0; color: #333; }
+        #myInfo { margin-bottom: 20px; color: #666; font-size: 0.95rem; }
 
-        #myInfo {
-            margin-bottom: 20px;
-            font-size: 0.9rem;
-            color: #666;
-            background: #f9f9f9;
-            padding: 10px;
-            border-radius: 8px;
-        }
-
-        /* Сетка кнопок */
+        /* Сетка кнопок 2x2 */
         .button-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -52,52 +40,48 @@
         button {
             border: none;
             border-radius: 10px;
-            padding: 14px;
+            padding: 15px;
             color: white;
-            font-weight: 600;
+            font-weight: bold;
             cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
+            transition: 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            font-size: 0.9rem;
+            border: 1px solid rgba(0,0,0,0.05);
         }
 
-        button:active { transform: scale(0.95); }
-        button:hover { opacity: 0.9; }
+        button:hover { opacity: 0.85; transform: translateY(-1px); }
+        button:active { transform: translateY(1px); }
 
-        /* Цвета из методички */
+        /* Цвета кнопок */
         .btn-study { background-color: #28a745; }
         .btn-coffee { background-color: #ffc107; color: #000; }
         .btn-game { background-color: #17a2b8; }
         .btn-home { background-color: #6c757d; }
 
-        /* Список пользователей */
-        #groupList {
-            text-align: left;
-            margin-top: 10px;
-        }
-
+        /* Стили списка пользователей */
         .user-item {
             display: flex;
             align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
         }
 
         .user-item:last-child { border-bottom: none; }
 
         .status-dot {
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             margin-right: 15px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+            flex-shrink: 0;
         }
 
-        .user-info strong { display: block; color: #333; }
-        .user-info small { color: #888; }
+        .user-details strong { font-size: 1.1rem; color: #222; }
+        .user-details small { color: #777; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -123,63 +107,65 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-        // ДАННЫЕ ИЗ ТВОИХ СКРИНШОТОВ
-        const URL = 'https://utdywixvtzjsaqxtqxrt.supabase.co'; // Твой Project URL
-        const KEY = 'sb_publishable_ThtftS6uBeaKf8FyndIFtg_O0HMJ5yh'; // Твой ANON KEY
-        const MY_ID = 'd50f580a-a6c7-4d32-ae6a-8e114d3e13a3'; // Твой UUID из БД
+        // --- ДАННЫЕ С ТВОИХ СКРИНШОТОВ ---
+        // 1. Твой URL проекта
+        const URL = 'https://utdywixvtzjsaqxtqxrt.supabase.co'; 
+        // 2. Твой ANON KEY
+        const KEY = 'sb_publishable_ThtftS6uBeaKf8FyndIFtg_O0HMJ5yh'; 
+        // 3. Твой личный ID из таблицы monitor
+        const MY_ID = 'd50f580a-a6c7-4d32-ae6a-8e114d3e13a3'; 
 
         const supabase = createClient(URL, KEY);
 
-        // Функция смены статуса
+        // Функция обновления твоего статуса
         window.changeStatus = async (text, color) => {
             const { error } = await supabase
-                .from('profiles')
+                .from('monitor') // Имя таблицы со скринов RLS
                 .update({ status: text, color: color })
                 .eq('id', MY_ID);
 
             if (error) {
-                alert("Ошибка! Проверь настройки RLS в Supabase (Policies).");
-                console.error("Детали ошибки:", error);
+                alert("Ошибка! Проверь настройки RLS или название таблицы.");
+                console.error("Ошибка обновления:", error);
             } else {
-                console.log("Статус успешно обновлен!");
-                fetchGroup(); // Обновляем список сразу после смены
+                fetchGroup(); // Сразу обновляем список после нажатия
             }
         };
 
-        // Функция получения списка группы
+        // Функция получения данных всей группы
         async function fetchGroup() {
             const { data, error } = await supabase
-                .from('profiles')
+                .from('monitor') // Имя таблицы со скринов RLS
                 .select('*')
                 .order('username', { ascending: true });
 
             if (error) {
-                console.error("Ошибка загрузки данных:", error);
+                console.error("Ошибка загрузки:", error);
                 return;
             }
 
-            const listContainer = document.getElementById('groupList');
-            listContainer.innerHTML = data.map(user => `
+            const list = document.getElementById('groupList');
+            list.innerHTML = data.map(user => `
                 <div class="user-item">
-                    <div class="status-dot" style="background-color: ${user.color || '#ccc'}"></div>
-                    <div class="user-info">
+                    <div class="status-dot" style="background: ${user.color || '#ccc'}"></div>
+                    <div class="user-details">
                         <strong>${user.username}</strong>
-                        <small>${user.status || 'Статус не установлен'}</small>
+                        <small>${user.status || 'Статус не задан'}</small>
                     </div>
                 </div>
             `).join('');
 
-            // Находим в списке себя, чтобы обновить шапку
+            // Находим тебя в списке, чтобы обновить приветствие
             const me = data.find(u => u.id === MY_ID);
             if (me) {
                 document.getElementById('myInfo').innerText = `Вы зашли как: ${me.username}`;
             }
         }
 
-        // Запускаем при загрузке страницы
+        // Запускаем при открытии страницы
         fetchGroup();
 
-        // Авто-обновление каждые 5 секунд, чтобы видеть статусы друзей
+        // Авто-обновление каждые 5 секунд (синхронизация с другими)
         setInterval(fetchGroup, 5000);
     </script>
 </body>
