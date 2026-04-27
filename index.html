@@ -100,11 +100,9 @@
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-        // Настройки подключения (твои актуальные данные)
+        // Настройки подключения
         const URL = 'https://utdywixvtzjsaqxtqxrt.supabase.co'; 
         const KEY = 'sb_publishable_6zjeZJ9xe6D41lPUqLgHug_MGno136_'; 
-        
-        // ИСПРАВЛЕНО: Добавлены одиночные кавычки вокруг UUID
         const MY_ID = 'd50f580a-a6c7-4d32-ae6a-8e114d3e13a3'; 
 
         const supabase = createClient(URL, KEY);
@@ -117,10 +115,10 @@
                 .eq('id', MY_ID);
 
             if (error) {
-                alert("Ошибка! Статус не обновился. Проверь RLS.");
+                alert("Ошибка! Статус не обновился. Проверь политики RLS в Supabase.");
                 console.error("Ошибка Supabase:", error);
             } else {
-                fetchGroup();
+                fetchGroup(); 
             }
         };
 
@@ -152,14 +150,14 @@
             if (me) {
                 document.getElementById('myInfo').innerText = `Вы зашли как: ${me.username}`;
             } else {
-                document.getElementById('myInfo').innerText = "Ошибка: ID пользователя не найден в таблице";
+                document.getElementById('myInfo').innerText = "Ошибка: ID пользователя не найден";
             }
         }
 
-        // Первый запуск
+        // Запуск при загрузке
         fetchGroup();
 
-        // Обновление раз в 5 секунд
+        // Обновление каждые 5 секунд
         setInterval(fetchGroup, 5000);
     </script>
 </body>
