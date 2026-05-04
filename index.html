@@ -57,6 +57,8 @@
         .btn-coffee { background-color: #ffc107; color: #000; }
         .btn-game { background-color: #17a2b8; }
         .btn-home { background-color: #6c757d; }
+        .btn-google { background-color: #4285F4; width: 100%; margin-bottom: 10px; }
+        .btn-logout { background: none; color: #ff4444; border: none; font-size: 0.8rem; cursor: pointer; text-decoration: underline; margin-top: 10px; width: 100%; }
 
         .user-item {
             display: flex;
@@ -72,68 +74,90 @@
             border-radius: 50%;
             margin-right: 15px;
             flex-shrink: 0;
-            background-color: #ccc; /* Цвет по умолчанию */
+            background-color: #28a745; 
         }
 
         .user-details strong { font-size: 1.1rem; color: #222; }
-        .user-details small { color: #777; font-size: 0.9rem; }
+        .user-details small { color: #777; font-size: 0.9rem; display: block; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h2>Мой профиль</h2>
-        <div id="myInfo">Загрузка данных...</div>
+        <div id="authSection">
+            <button class="btn-google" onclick="signIn()">Войти через Google</button>
+        </div>
         
-        <div class="button-grid">
-            <button class="btn-study" onclick="changeStatus('📚 Учусь')">📚 Учусь</button>
-            <button class="btn-coffee" onclick="changeStatus('☕ Кофе')">☕ Кофе</button>
-            <button class="btn-game" onclick="changeStatus('🎮 В игре')">🎮 В игре</button>
-            <button class="btn-home" onclick="changeStatus('🏠 Дома')">🏠 Дома</button>
+        <div id="profileSection" style="display: none;">
+            <div id="myInfo">Загрузка...</div>
+            <div class="button-grid">
+                <button class="btn-study" onclick="changeStatus('📚 Учусь')">📚 Учусь</button>
+                <button class="btn-coffee" onclick="changeStatus('☕ Кофе')">☕ Кофе</button>
+                <button class="btn-game" onclick="changeStatus('🎮 В игре')">🎮 В игре</button>
+                <button class="btn-home" onclick="changeStatus('🏠 Дома')">🏠 Дома</button>
+            </div>
+            <button class="btn-logout" onclick="signOut()">Выйти из аккаунта</button>
         </div>
     </div>
 
     <div class="card">
         <h2>Монитор группы</h2>
-        <div id="groupList"></div>
+        <div id="groupList">Загрузка списка...</div>
     </div>
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-        // Настройки подключения
         const URL = 'https://utdywixvtzjsaqxtqxrt.supabase.co'; 
         const KEY = 'sb_publishable_6zjeZJ9xe6D41lPUqLgHug_MGno136_'; 
-        const MY_ID = 'd50f580a-a6c7-4d32-ae6a-8e114d3e13a3'; 
 
         const supabase = createClient(URL, KEY);
 
-        // Функция обновления статуса (без колонки color)
+        // Функция входа
+        window.signIn = async () => {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo: window.location.origin }
+            });
+            if (error) console.error("Ошибка входа:", error.message);
+        };
+
+        // Функция выхода
+        window.signOut = async () => {
+            await supabase.auth.signOut();
+            window.location.reload();
+        };
+
+        // Функция обновления статуса
         window.changeStatus = async (text) => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return alert("Сначала войдите!");
+
             const { error } = await supabase
                 .from('monitor') 
-                .update({ status: text })
-                .eq('id', MY_ID);
+                .upsert({ 
+                    id: user.id, 
+                    username: user.user_metadata.full_name || user.email, 
+                    status: text 
+                });
 
             if (error) {
-                alert("Ошибка! Статус не обновился. Проверь политики RLS в Supabase.");
-                console.error("Ошибка Supabase:", error);
+                alert("Ошибка! Проверь политики RLS в Supabase.");
+                console.error(error);
             } else {
                 fetchGroup(); 
             }
         };
 
-        // Функция получения списка группы
+        // Получение списка
         async function fetchGroup() {
             const { data, error } = await supabase
                 .from('monitor')
                 .select('*')
                 .order('username', { ascending: true });
 
-            if (error) {
-                console.error("Ошибка загрузки данных:", error);
-                return;
-            }
+            if (error) return;
 
             const list = document.getElementById('groupList');
             list.innerHTML = data.map(user => `
@@ -145,20 +169,26 @@
                     </div>
                 </div>
             `).join('');
-
-            // Приветствие в шапке
-            const me = data.find(u => u.id === MY_ID);
-            if (me) {
-                document.getElementById('myInfo').innerText = `Вы зашли как: ${me.username}`;
-            } else {
-                document.getElementById('myInfo').innerText = "Ошибка: ID пользователя не найден";
-            }
         }
 
-        // Запуск при загрузке
-        fetchGroup();
+        // Следим за авторизацией
+        supabase.auth.onAuthStateChange((event, session) => {
+            const authSection = document.getElementById('authSection');
+            const profileSection = document.getElementById('profileSection');
+            const myInfo = document.getElementById('myInfo');
 
-        // Обновление каждые 5 секунд
+            if (session) {
+                authSection.style.display = 'none';
+                profileSection.style.display = 'block';
+                myInfo.innerText = `Вы вошли как: ${session.user.user_metadata.full_name || session.user.email}`;
+            } else {
+                authSection.style.display = 'block';
+                profileSection.style.display = 'none';
+            }
+            fetchGroup();
+        });
+
+        // Интервал обновления
         setInterval(fetchGroup, 5000);
     </script>
 </body>
