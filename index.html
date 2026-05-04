@@ -115,13 +115,15 @@
         const supabase = createClient(URL, KEY);
 
         // Функция входа
-        window.signIn = async () => {
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: { redirectTo: window.location.origin }
-            });
-            if (error) console.error("Ошибка входа:", error.message);
-        };
+       window.signIn = async () => {
+    await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            // Обязательно добавь слэш в конце /SUBD/
+            redirectTo: 'https://240136-sudo.github.io/SUBD/'
+        }
+    });
+};
 
         // Функция выхода
         window.signOut = async () => {
