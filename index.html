@@ -24,42 +24,69 @@
             max-width: 450px;
             margin-bottom: 20px;
             text-align: center;
+            box-sizing: border-box;
         }
 
-        h2 { margin-top: 0; color: #333; }
-        #myInfo { margin-bottom: 20px; color: #666; font-size: 0.95rem; font-weight: bold; }
-
-        .button-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        button {
-            border: none;
-            border-radius: 10px;
-            padding: 15px;
-            color: white;
+        h2 { margin-top: 0; color: #333; font-size: 1.3rem; }
+        #myInfo { margin-bottom: 15px; color: #111; font-size: 1.2rem; font-weight: bold; }
+        
+        /* Стили таймера */
+        .timer-container {
+            font-size: 1.8rem;
             font-weight: bold;
+            color: #007bff;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* Кнопки действий */
+        .main-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 10px;
+            border: none;
             cursor: pointer;
+            margin-bottom: 12px;
             transition: 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            border: 1px solid rgba(0,0,0,0.05);
+            color: white;
+        }
+        .btn-stop { background-color: #dc3545; }
+        .btn-start { background-color: #28a745; }
+
+        .sub-button-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        button.sub-btn {
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.95rem;
         }
 
         button:hover { opacity: 0.85; transform: translateY(-1px); }
         button:active { transform: translateY(1px); }
 
-        .btn-study { background-color: #28a745; }
         .btn-coffee { background-color: #ffc107; color: #000; }
-        .btn-game { background-color: #17a2b8; }
-        .btn-home { background-color: #6c757d; }
-        .btn-google { background-color: #4285F4; width: 100%; margin-bottom: 10px; }
-        .btn-logout { background: none; color: #ff4444; border: none; font-size: 0.8rem; cursor: pointer; text-decoration: underline; margin-top: 10px; width: 100%; }
-
+        .btn-exit { background-color: #6c757d; }
+        .btn-google { background-color: #4285F4; width: 100%; color: white; font-weight: bold; padding: 15px; border-radius: 10px; border: none; cursor: pointer;}
+        
+        /* Список группы */
         .user-item {
             display: flex;
             align-items: center;
@@ -69,40 +96,61 @@
         }
 
         .status-dot {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             margin-right: 15px;
             flex-shrink: 0;
-            background-color: #28a745; 
+            background-color: #9e9e9e; /* По дефолту серый (офлайн) */
+            transition: background-color 0.3s;
+        }
+        .status-dot.online {
+            background-color: #28a745; /* Зеленый (онлайн) */
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.5);
         }
 
-        .user-details strong { font-size: 1.1rem; color: #222; }
-        .user-details small { color: #777; font-size: 0.9rem; display: block; }
+        .user-details {
+            flex-grow: 1;
+        }
+        .user-details strong { font-size: 1.05rem; color: #222; display: block; }
+        .user-details small { color: #555; font-size: 0.9rem; margin-top: 2px; display: block; }
+        
+        .user-meta {
+            text-align: right;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .user-meta .status-text { font-weight: bold; color: #333; display: block;}
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2>Мой профиль</h2>
         <div id="authSection">
+            <h2>Авторизация</h2>
             <button class="btn-google" onclick="signIn()">Войти через Google</button>
         </div>
         
         <div id="profileSection" style="display: none;">
-            <div id="myInfo">Загрузка...</div>
-            <div class="button-grid">
-                <button class="btn-study" onclick="changeStatus('📚 Учусь')">📚 Учусь</button>
-                <button class="btn-coffee" onclick="changeStatus('☕ Кофе')">☕ Кофе</button>
-                <button class="btn-game" onclick="changeStatus('🎮 В игре')">🎮 В игре</button>
-                <button class="btn-home" onclick="changeStatus('🏠 Дома')">🏠 Дома</button>
+            <div id="myInfo">ФИО Пользователя</div>
+            
+            <div class="timer-container" id="timerBlock" style="display: none;">
+                ⏱️ <span id="sessionTimer">00 сек.</span>
             </div>
-            <button class="btn-logout" onclick="signOut()">Выйти из аккаунта</button>
+
+            <button id="mainStateBtn" class="main-btn btn-start" onclick="toggleStudy()">
+                📚 Начать учебу
+            </button>
+
+            <div class="sub-button-grid">
+                <button class="sub-btn btn-coffee" onclick="setBreak()">☕ Перерыв</button>
+                <button class="sub-btn btn-exit" onclick="signOut()">Выход</button>
+            </div>
         </div>
     </div>
 
     <div class="card">
-        <h2>Монитор группы</h2>
+        <h2>👥 Монитор группы</h2>
         <div id="groupList">Загрузка списка...</div>
     </div>
 
@@ -114,45 +162,130 @@
 
         const supabase = createClient(URL, KEY);
 
-        // Функция входа
-       window.signIn = async () => {
-    await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            // Обязательно добавь слэш в конце /SUBD/
-            redirectTo: 'https://240136-sudo.github.io/SUBD/'
-        }
-    });
-};
+        let currentUser = null;
+        let isStudyingLocal = false;
+        let studyStartedAtLocal = null;
+        let timerInterval = null;
 
-        // Функция выхода
+        // Вход / Выход
+        window.signIn = async () => {
+            await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo: 'https://240136-sudo.github.io/SUBD/' }
+            });
+        };
+
         window.signOut = async () => {
+            if (currentUser) {
+                // При выходе сбрасываем статус обучения
+                await supabase.from('monitor').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети' });
+            }
             await supabase.auth.signOut();
             window.location.reload();
         };
 
-        // Функция обновления статуса
-        window.changeStatus = async (text) => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return alert("Сначала войдите!");
+        // Логика кнопки "Начать учебу / Завершить сессию"
+        window.toggleStudy = async () => {
+            if (!currentUser) return alert("Сначала войдите!");
 
-            const { error } = await supabase
-                .from('monitor') 
-                .upsert({ 
-                    id: user.id, 
-                    username: user.user_metadata.full_name || user.email, 
-                    status: text 
+            if (!isStudyingLocal) {
+                // Начинаем учебу
+                const startTime = new Date().toISOString();
+                const { error } = await supabase.from('monitor').upsert({ 
+                    id: currentUser.id, 
+                    username: currentUser.user_metadata.full_name || currentUser.email, 
+                    status: '📚 В учебе',
+                    is_studying: true,
+                    study_started_at: startTime,
+                    last_seen: new Date().toISOString()
                 });
-
-            if (error) {
-                alert("Ошибка! Проверь политики RLS в Supabase.");
-                console.error(error);
+                if (!error) {
+                    isStudyingLocal = true;
+                    studyStartedAtLocal = startTime;
+                    updateMyUI();
+                }
             } else {
-                fetchGroup(); 
+                // Завершаем учебу
+                const { error } = await supabase.from('monitor').upsert({ 
+                    id: currentUser.id, 
+                    username: currentUser.user_metadata.full_name || currentUser.email, 
+                    status: '🏠 Дома',
+                    is_studying: false,
+                    study_started_at: null,
+                    last_seen: new Date().toISOString()
+                });
+                if (!error) {
+                    isStudyingLocal = false;
+                    studyStartedAtLocal = null;
+                    updateMyUI();
+                }
+            }
+            fetchGroup();
+        };
+
+        // Кнопка "Перерыв"
+        window.setBreak = async () => {
+            if (!currentUser) return alert("Сначала войдите!");
+            const { error } = await supabase.from('monitor').upsert({ 
+                id: currentUser.id, 
+                username: currentUser.user_metadata.full_name || currentUser.email, 
+                status: '☕ Перерыв',
+                is_studying: false,
+                study_started_at: null,
+                last_seen: new Date().toISOString()
+            });
+            if (!error) {
+                isStudyingLocal = false;
+                studyStartedAtLocal = null;
+                updateMyUI();
+                fetchGroup();
             }
         };
 
-        // Получение списка
+        // Пинг активности (чтобы система знала, что вкладка открыта)
+        async function sendPing() {
+            if (!currentUser) return;
+            await supabase.from('monitor').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id);
+        }
+
+        // Обновление интерфейса вашей карточки и запуск локального таймера
+        function updateMyUI() {
+            const mainBtn = document.getElementById('mainStateBtn');
+            const timerBlock = document.getElementById('timerBlock');
+
+            clearInterval(timerInterval);
+
+            if (isStudyingLocal && studyStartedAtLocal) {
+                mainBtn.innerText = "🛑 Завершить сессию";
+                mainBtn.className = "main-btn btn-stop";
+                timerBlock.style.display = "flex";
+
+                // Запуск ежесекундного обновления таймера
+                timerInterval = setInterval(() => {
+                    const diffMs = new Date() - new Date(studyStartedAtLocal);
+                    document.getElementById('sessionTimer').innerText = formatTime(diffMs);
+                }, 1000);
+            } else {
+                mainBtn.innerText = "📚 Начать учебу";
+                mainBtn.className = "main-btn btn-start";
+                timerBlock.style.display = "none";
+            }
+        }
+
+        // Вспомогательная функция форматирования времени (0ч 0м 23с)
+        function formatTime(ms) {
+            if (!ms || ms < 0) return "0 сек.";
+            const totalSecs = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSecs / 3600);
+            const minutes = Math.floor((totalSecs % 3600) / 60);
+            const seconds = totalSecs % 60;
+
+            if (hours > 0) return `${hours}ч ${minutes}м ${seconds}с`;
+            if (minutes > 0) return `${minutes}м ${seconds}с`;
+            return `${seconds} сек.`;
+        }
+
+        // Получение списка группы и рендеринг
         async function fetchGroup() {
             const { data, error } = await supabase
                 .from('monitor')
@@ -162,36 +295,67 @@
             if (error) return;
 
             const list = document.getElementById('groupList');
-            list.innerHTML = data.map(user => `
-                <div class="user-item">
-                    <div class="status-dot"></div>
-                    <div class="user-details">
-                        <strong>${user.username}</strong>
-                        <small>${user.status || 'Статус не задан'}</small>
+            const now = new Date();
+
+            list.innerHTML = data.map(user => {
+                // Проверка на онлайн: если last_seen был меньше 60 секунд назад — он онлайн
+                const lastSeenDate = user.last_seen ? new Date(user.last_seen) : null;
+                const isOnline = lastSeenDate && (now - lastSeenDate < 60000); 
+                const statusDotClass = isOnline ? 'status-dot online' : 'status-dot';
+
+                // Считаем время в учебе для строки группы
+                let studyTimeText = '';
+                if (user.is_studying && user.study_started_at) {
+                    const diff = now - new Date(user.study_started_at);
+                    studyTimeText = `⏱️ Обучается: ${formatTime(diff)}`;
+                }
+
+                return `
+                    <div class="user-item">
+                        <div class="${statusDotClass}"></div>
+                        <div class="user-details">
+                            <strong>${user.username}</strong>
+                            <small>${studyTimeText || 'Не обучается'}</small>
+                        </div>
+                        <div class="user-meta">
+                            <span class="status-text">${user.status || '🏠 Дома'}</span>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
-        // Следим за авторизацией
-        supabase.auth.onAuthStateChange((event, session) => {
+        // Слушатель состояния авторизации Supabase
+        supabase.auth.onAuthStateChange(async (event, session) => {
             const authSection = document.getElementById('authSection');
             const profileSection = document.getElementById('profileSection');
             const myInfo = document.getElementById('myInfo');
 
             if (session) {
+                currentUser = session.user;
                 authSection.style.display = 'none';
                 profileSection.style.display = 'block';
-                myInfo.innerText = `Вы вошли как: ${session.user.user_metadata.full_name || session.user.email}`;
+                myInfo.innerText = session.user.user_metadata.full_name || session.user.email;
+
+                // Подгружаем актуальное состояние этого пользователя из БД
+                const { data } = await supabase.from('monitor').select('*').eq('id', currentUser.id).single();
+                if (data) {
+                    isStudyingLocal = data.is_studying;
+                    studyStartedAtLocal = data.study_started_at;
+                }
+                updateMyUI();
             } else {
+                currentUser = null;
                 authSection.style.display = 'block';
                 profileSection.style.display = 'none';
+                clearInterval(timerInterval);
             }
             fetchGroup();
         });
 
-        // Интервал обновления
-        setInterval(fetchGroup, 5000);
+        // Интервалы работы приложения
+        setInterval(fetchGroup, 5000); // Обновляем список группы каждые 5 сек
+        setInterval(sendPing, 30000);   // Каждые 30 сек сообщаем базе данных, что мы онлайн
     </script>
 </body>
 </html>
