@@ -228,7 +228,7 @@
             try {
                 await supabase.auth.signInWithOAuth({
                     provider: 'google',
-                    options: { redirectTo: 'https://240136-sudo.github.io/SUBD/' }
+                    options: { redirectTo: window.location.origin + window.location.pathname }
                 });
             } catch (err) { console.error(err); }
         };
@@ -276,7 +276,6 @@
                     studyStartedAtLocal = null;
                 }
                 updateMyUI();
-                fetchGroup();
             } catch(e) { console.error(e); }
         };
 
@@ -296,7 +295,6 @@
                     last_seen: new Date().toISOString()
                 });
                 updateMyUI();
-                fetchGroup();
             } catch(e) { console.error(e); }
         };
 
@@ -357,7 +355,7 @@
                     .order('username', { ascending: true });
 
                 if (error) {
-                    list.innerText = "Ошибка загрузки списка групп.";
+                    list.innerText = "Ошибка загрузки списка. Проверь права доступа в БД.";
                     return;
                 }
 
@@ -369,7 +367,7 @@
 
                 list.innerHTML = data.map(user => {
                     const lastSeenDate = user.last_seen ? new Date(user.last_seen) : null;
-                    const isOnline = lastSeenDate && (now - lastSeenDate < 60000); 
+                    const isOnline = lastSeenDate && (now - lastSeenDate < 90000); 
                     const statusDotClass = isOnline ? 'status-dot online' : 'status-dot';
 
                     let studyTimeText = '';
@@ -391,7 +389,7 @@
                         </div>
                     `;
                 }).join('');
-            } catch (e) { list.innerText = "Ошибка."; }
+            } catch (e) { list.innerText = "Ошибка загрузки."; }
         }
 
         async function fetchMessages() {
@@ -406,7 +404,7 @@
                     .limit(50);
 
                 if (error) {
-                    chatBox.innerText = "Создайте таблицу 'messages' в БД.";
+                    chatBox.innerText = "Ошибка чата. Проверь наличие таблицы.";
                     return;
                 }
 
@@ -421,7 +419,7 @@
                     </div>
                 `).join('');
                 chatBox.scrollTop = chatBox.scrollHeight;
-            } catch (e) { chatBox.innerText = "Ошибка чата."; }
+            } catch (e) { chatBox.innerText = "Ошибка."; }
         }
 
         window.sendMessage = async () => {
@@ -437,13 +435,28 @@
                     username: currentUser.user_metadata.full_name || currentUser.email,
                     text: txt
                 });
-                fetchMessages();
             } catch(e) {}
         };
 
         document.getElementById('chatInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
+
+        function initRealtimeSubscriptions() {
+            supabase
+                .channel('schema-db-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'monitor' }, () => {
+                    fetchGroup();
+                })
+                .subscribe();
+
+            supabase
+                .channel('schema-chat-changes')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+                    fetchMessages();
+                })
+                .subscribe();
+        }
 
         supabase.auth.onAuthStateChange(async (event, session) => {
             const authSection = document.getElementById('authSection');
@@ -468,7 +481,6 @@
                         isStudyingLocal = data[0].is_studying || false;
                         studyStartedAtLocal = data[0].study_started_at || null;
                     } else {
-                        // Авто-регистрация юзера в таблице при первом входе
                         await supabase.from('monitor').insert({
                             id: currentUser.id,
                             username: name,
@@ -486,12 +498,12 @@
                 if (chatSendBtn) chatSendBtn.disabled = true;
                 clearInterval(timerInterval);
             }
+            
             fetchGroup();
             fetchMessages();
+            initRealtimeSubscriptions();
         });
 
-        setInterval(fetchGroup, 5000); 
-        setInterval(fetchMessages, 4000);
         setInterval(sendPing, 30000);   
     </script>
 </body>
