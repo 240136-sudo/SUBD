@@ -30,7 +30,6 @@
         h2 { margin-top: 0; color: #333; font-size: 1.3rem; }
         #myInfo { margin-bottom: 15px; color: #111; font-size: 1.2rem; font-weight: bold; }
         
-        /* Стили таймера */
         .timer-container {
             font-size: 1.8rem;
             font-weight: bold;
@@ -42,7 +41,6 @@
             gap: 10px;
         }
 
-        /* Кнопки действий */
         .main-btn {
             width: 100%;
             padding: 14px;
@@ -90,11 +88,10 @@
         .user-item {
             display: flex;
             align-items: center;
-            padding: 12px 5px;
+            padding: 15px;
             border-bottom: 1px solid #eee;
             text-align: left;
         }
-        .user-item:last-child { border-bottom: none; }
 
         .status-dot {
             width: 12px;
@@ -114,66 +111,24 @@
             flex-grow: 1;
         }
         .user-details strong { font-size: 1.05rem; color: #222; display: block; }
-        .user-details small { color: #007bff; font-size: 0.85rem; margin-top: 2px; display: block; }
+        .user-details small { color: #007bff; font-size: 0.9rem; margin-top: 2px; display: block; }
         
         .user-meta {
             text-align: right;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #666;
         }
         .user-meta .status-text { font-weight: bold; color: #333; display: block;}
 
-        /* Стили Общего Чата */
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
+        .error-box {
+            color: #dc3545;
+            background-color: #fde8e8;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-top: 10px;
             text-align: left;
         }
-        .chat-messages {
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 10px;
-            height: 200px;
-            overflow-y: auto;
-            padding: 15px;
-            margin-bottom: 12px;
-            font-size: 0.95rem;
-        }
-        .chat-message {
-            margin-bottom: 10px;
-            line-height: 1.4;
-            word-break: break-word;
-        }
-        .chat-message strong {
-            color: #111;
-        }
-        .chat-input-wrapper {
-            display: flex;
-            gap: 8px;
-        }
-        .chat-input {
-            flex-grow: 1;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            outline: none;
-        }
-        .chat-send-btn {
-            background-color: #2ecc71;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 0 16px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
-        }
-        .chat-send-btn:hover { background-color: #27ae60; }
     </style>
 </head>
 <body>
@@ -185,7 +140,7 @@
         </div>
         
         <div id="profileSection" style="display: none;">
-            <div id="myInfo">Загрузка...</div>
+            <div id="myInfo">ФИО Пользователя</div>
             
             <div class="timer-container" id="timerBlock" style="display: none;">
                 ⏱️ <span id="sessionTimer">00 сек.</span>
@@ -207,17 +162,6 @@
         <div id="groupList">Загрузка списка...</div>
     </div>
 
-    <div class="card">
-        <h2>💬 Общий чат</h2>
-        <div class="chat-container">
-            <div class="chat-messages" id="chatMessages">Загрузка сообщений...</div>
-            <div class="chat-input-wrapper">
-                <input type="text" id="chatInput" class="chat-input" placeholder="Сообщение..." disabled>
-                <button id="chatSendBtn" class="chat-send-btn" onclick="sendMessage()" disabled>➤</button>
-            </div>
-        </div>
-    </div>
-
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
@@ -231,12 +175,13 @@
         let studyStartedAtLocal = null;
         let timerInterval = null;
 
-        // Вход / Выход
         window.signIn = async () => {
-            await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: { redirectTo: 'https://240136-sudo.github.io/SUBD/' }
-            });
+            try {
+                await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { redirectTo: 'https://240136-sudo.github.io/SUBD/' }
+                });
+            } catch (err) { console.error(err); }
         };
 
         window.signOut = async () => {
@@ -250,72 +195,71 @@
             window.location.reload();
         };
 
-        // Логика кнопки "Начать учебу / Завершить сессию"
         window.toggleStudy = async () => {
             if (!currentUser) return alert("Сначала войдите!");
-
             clearInterval(timerInterval);
 
-            if (!isStudyingLocal) {
-                const startTime = new Date().toISOString();
-                const { error } = await supabase.from('monitor').upsert({ 
-                    id: currentUser.id, 
-                    username: currentUser.user_metadata.full_name || currentUser.email, 
-                    status: '📚 В учебе',
-                    is_studying: true,
-                    study_started_at: startTime,
-                    last_seen: new Date().toISOString()
-                });
-                if (!error) {
-                    isStudyingLocal = true;
-                    studyStartedAtLocal = startTime;
+            try {
+                if (!isStudyingLocal) {
+                    const startTime = new Date().toISOString();
+                    const { error } = await supabase.from('monitor').upsert({ 
+                        id: currentUser.id, 
+                        username: currentUser.user_metadata.full_name || currentUser.email, 
+                        status: '📚 В учебе',
+                        is_studying: true,
+                        study_started_at: startTime,
+                        last_seen: new Date().toISOString()
+                    });
+                    if (!error) {
+                        isStudyingLocal = true;
+                        studyStartedAtLocal = startTime;
+                    } else { alert("Ошибка сохранения: " + error.message); }
+                } else {
+                    const { error } = await supabase.from('monitor').upsert({ 
+                        id: currentUser.id, 
+                        username: currentUser.user_metadata.full_name || currentUser.email, 
+                        status: '🏠 Дома',
+                        is_studying: false,
+                        study_started_at: null,
+                        last_seen: new Date().toISOString()
+                    });
+                    if (!error) {
+                        isStudyingLocal = false;
+                        studyStartedAtLocal = null;
+                    } else { alert("Ошибка сохранения: " + error.message); }
                 }
-            } else {
-                const { error } = await supabase.from('monitor').upsert({ 
-                    id: currentUser.id, 
-                    username: currentUser.user_metadata.full_name || currentUser.email, 
-                    status: '🏠 Дома',
-                    is_studying: false,
-                    study_started_at: null,
-                    last_seen: new Date().toISOString()
-                });
-                if (!error) {
-                    isStudyingLocal = false;
-                    studyStartedAtLocal = null;
-                }
-            }
-            updateMyUI();
-            fetchGroup();
+                updateMyUI();
+                fetchGroup();
+            } catch(e) { console.error(e); }
         };
 
-        // Кнопка "Перерыв"
         window.setBreak = async () => {
             if (!currentUser) return alert("Сначала войдите!");
-            
             clearInterval(timerInterval);
             isStudyingLocal = false;
             studyStartedAtLocal = null;
 
-            await supabase.from('monitor').upsert({ 
-                id: currentUser.id, 
-                username: currentUser.user_metadata.full_name || currentUser.email, 
-                status: '☕ Перерыв',
-                is_studying: false,
-                study_started_at: null,
-                last_seen: new Date().toISOString()
-            });
-
-            updateMyUI();
-            fetchGroup();
+            try {
+                await supabase.from('monitor').upsert({ 
+                    id: currentUser.id, 
+                    username: currentUser.user_metadata.full_name || currentUser.email, 
+                    status: '☕ Перерыв',
+                    is_studying: false,
+                    study_started_at: null,
+                    last_seen: new Date().toISOString()
+                });
+                updateMyUI();
+                fetchGroup();
+            } catch(e) { console.error(e); }
         };
 
-        // Отправка пинга онлайн-активности
         async function sendPing() {
             if (!currentUser) return;
-            await supabase.from('monitor').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id);
+            try {
+                await supabase.from('monitor').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id);
+            } catch(e) {}
         }
 
-        // Обновление интерфейса верхнего блока и перезапуск чистого таймера
         function updateMyUI() {
             const mainBtn = document.getElementById('mainStateBtn');
             const timerBlock = document.getElementById('timerBlock');
@@ -323,8 +267,10 @@
             clearInterval(timerInterval);
 
             if (isStudyingLocal && studyStartedAtLocal) {
-                mainBtn.innerText = "🛑 Завершить сессию";
-                mainBtn.className = "main-btn btn-stop";
+                if (mainBtn) {
+                    mainBtn.innerText = "🛑 Завершить сессию";
+                    mainBtn.className = "main-btn btn-stop";
+                }
                 if (timerBlock) timerBlock.style.display = "flex";
 
                 timerInterval = setInterval(() => {
@@ -333,8 +279,10 @@
                     if (timerElement) timerElement.innerText = formatTime(diffMs);
                 }, 1000);
             } else {
-                mainBtn.innerText = "📚 Начать учебу";
-                mainBtn.className = "main-btn btn-start";
+                if (mainBtn) {
+                    mainBtn.innerText = "📚 Начать учебу";
+                    mainBtn.className = "main-btn btn-start";
+                }
                 if (timerBlock) timerBlock.style.display = "none";
             }
         }
@@ -351,18 +299,25 @@
             return `${seconds} сек.`;
         }
 
-        // Безопасное получение списка группы (без .single())
         async function fetchGroup() {
+            const list = document.getElementById('groupList');
+            if (!list) return;
+
             try {
                 const { data, error } = await supabase
                     .from('monitor')
                     .select('*')
                     .order('username', { ascending: true });
 
-                if (error) return;
-
-                const list = document.getElementById('groupList');
-                if (!list) return;
+                if (error) {
+                    list.innerHTML = `
+                        <div class="error-box">
+                            <strong>Ошибка Supabase:</strong> ${error.message}<br>
+                            <small>Подсказка: Скорее всего, вы забыли добавить новые колонки через SQL Editor или выключить RLS.</small>
+                        </div>
+                    `;
+                    return;
+                }
 
                 const now = new Date();
 
@@ -395,105 +350,44 @@
                         </div>
                     `;
                 }).join('');
-            } catch (e) { console.error(e); }
-        }
-
-        // Логика Чата
-        async function fetchMessages() {
-            try {
-                const { data, error } = await supabase
-                    .from('messages')
-                    .select('*')
-                    .order('created_at', { ascending: true })
-                    .limit(50);
-
-                if (error) return;
-
-                const chatBox = document.getElementById('chatMessages');
-                if (!chatBox) return;
-
-                if (!data || data.length === 0) {
-                    chatBox.innerText = "Сообщений нет. Напишите что-нибудь!";
-                    return;
-                }
-
-                chatBox.innerHTML = data.map(msg => `
-                    <div class="chat-message">
-                        <strong>${msg.username}:</strong> ${msg.text}
-                    </div>
-                `).join('');
-
-                // Автоматическая прокрутка вниз к свежим сообщениям
-                chatBox.scrollTop = chatBox.scrollHeight;
-            } catch (e) { console.error(e); }
-        }
-
-        window.sendMessage = async () => {
-            const input = document.getElementById('chatInput');
-            if (!input || !input.value.trim() || !currentUser) return;
-
-            const messageText = input.value.trim();
-            input.value = ''; // Мгновенно очищаем строку ввода для удобства
-
-            await supabase.from('messages').insert({
-                user_id: currentUser.id,
-                username: currentUser.user_metadata.full_name || currentUser.email,
-                text: messageText
-            });
-
-            fetchMessages();
-        };
-
-        // Обработка отправки по кнопке Enter
-        document.getElementById('chatInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
+            } catch (e) { 
+                list.innerText = "Критическая ошибка скрипта.";
             }
-        });
+        }
 
-        // Слушатель состояния авторизации
         supabase.auth.onAuthStateChange(async (event, session) => {
             const authSection = document.getElementById('authSection');
             const profileSection = document.getElementById('profileSection');
             const myInfo = document.getElementById('myInfo');
-            const chatInput = document.getElementById('chatInput');
-            const chatSendBtn = document.getElementById('chatSendBtn');
 
             if (session) {
                 currentUser = session.user;
                 if (authSection) authSection.style.display = 'none';
                 if (profileSection) profileSection.style.display = 'block';
                 if (myInfo) myInfo.innerText = session.user.user_metadata.full_name || session.user.email;
-                
-                if (chatInput) chatInput.disabled = false;
-                if (chatSendBtn) chatSendBtn.disabled = false;
 
-                // Безопасный запрос вместо ломающегося .single()
-                const { data } = await supabase.from('monitor').select('*').eq('id', currentUser.id);
-                if (data && data.length > 0) {
-                    isStudyingLocal = data[0].is_studying;
-                    studyStartedAtLocal = data[0].study_started_at;
-                } else {
-                    isStudyingLocal = false;
-                    studyStartedAtLocal = null;
-                }
+                try {
+                    const { data, error } = await supabase.from('monitor').select('*').eq('id', currentUser.id);
+                    if (!error && data && data.length > 0) {
+                        isStudyingLocal = data[0].is_studying || false;
+                        studyStartedAtLocal = data[0].study_started_at || null;
+                    } else {
+                        isStudyingLocal = false;
+                        studyStartedAtLocal = null;
+                    }
+                } catch(err) { console.error(err); }
                 updateMyUI();
             } else {
                 currentUser = null;
                 if (authSection) authSection.style.display = 'block';
                 if (profileSection) profileSection.style.display = 'none';
-                if (chatInput) chatInput.disabled = true;
-                if (chatSendBtn) chatSendBtn.disabled = true;
                 clearInterval(timerInterval);
             }
             fetchGroup();
-            fetchMessages();
         });
 
-        // Интервалы автообновления
-        setInterval(fetchGroup, 5000);    // Список группы обновляется раз в 5 сек
-        setInterval(fetchMessages, 4000); // Сообщения чата обновляются раз в 4 сек
-        setInterval(sendPing, 20000);     // Пинг активности шлется раз в 20 сек
+        setInterval(fetchGroup, 5000); 
+        setInterval(sendPing, 30000);   
     </script>
 </body>
 </html>
