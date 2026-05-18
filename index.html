@@ -235,12 +235,25 @@
 
         window.signOut = async () => {
             clearInterval(timerInterval);
-            if (currentUser) {
+            
+            if (currentUser && supabase) {
                 try {
-                    await supabase.from('monitor').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети' });
-                } catch (e) { console.error(e); }
+                    // Ставим таймаут, чтобы долгий ответ от базы не блокировал выход
+                    await Promise.race([
+                        supabase.from('monitor').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети' }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1500))
+                    ]);
+                } catch (e) { 
+                    console.log("База тупит, выходим принудительно"); 
+                }
             }
-            await supabase.auth.signOut();
+            
+            try {
+                await supabase.auth.signOut();
+            } catch(e) {}
+            
+            localStorage.clear();
+            sessionStorage.clear();
             window.location.reload();
         };
 
