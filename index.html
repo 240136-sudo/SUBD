@@ -33,8 +33,67 @@
         }
 
         h2 { margin-top: 0; color: #a2b4dc; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
-        #myInfo { margin-bottom: 15px; color: #fff; font-size: 1.3rem; font-weight: bold; }
         
+        /* Блок профиля (как на макете) */
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .avatar-circle {
+            width: 50px;
+            height: 50px;
+            background: #4a753c;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+        }
+        .profile-titles strong { font-size: 1.2rem; display: block; color: #fff; }
+        .profile-titles span { font-size: 0.85rem; color: #7f8c8d; display: flex; align-items: center; gap: 6px; }
+
+        /* Сетка мини-статистики в профиле */
+        .mini-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            background: #1a2234;
+            padding: 12px;
+            border-radius: 12px;
+        }
+        .mini-stat-item .stat-val { font-size: 1.1rem; font-weight: bold; color: #00ffcc; display: block; }
+        .mini-stat-item .stat-lbl { font-size: 0.75rem; color: #7f8c8d; text-transform: uppercase; }
+
+        /* Кнопки переключения вкладок */
+        .tabs-nav {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        .tab-btn {
+            background: #1a2234;
+            border: 1px solid #25324d;
+            color: #7f8c8d;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .tab-btn.active {
+            background: #25324d;
+            color: #fff;
+            border-color: #a2b4dc;
+        }
+
         .timer-container {
             font-size: 2rem;
             font-weight: bold;
@@ -152,11 +211,13 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
-            opacity: 0.4;
+            opacity: 0.3;
+            filter: grayscale(90%);
             transition: 0.3s;
         }
         .ach-card.unlocked {
             opacity: 1;
+            filter: grayscale(0%);
             border-color: #00ffcc;
             background: linear-gradient(145deg, #1a2234, #142c33);
         }
@@ -208,7 +269,32 @@
             </div>
             
             <div id="profileSection" style="display: none;">
-                <div id="myInfo">Загрузка...</div>
+                <div class="profile-header">
+                    <div class="avatar-circle" id="userAvatar">?</div>
+                    <div class="profile-titles">
+                        <strong id="myInfo">Загрузка...</strong>
+                        <span id="userStatusLabel">🟢 В сети</span>
+                    </div>
+                </div>
+
+                <div class="mini-stats-grid">
+                    <div class="mini-stat-item">
+                        <span class="stat-val" id="stat-time">0с</span>
+                        <span class="stat-lbl">учеба</span>
+                    </div>
+                    <div class="mini-stat-item">
+                        <span class="stat-val" id="stat-sessions">0</span>
+                        <span class="stat-lbl">сессий</span>
+                    </div>
+                    <div class="mini-stat-item">
+                        <span class="stat-val" id="stat-messages">0</span>
+                        <span class="stat-lbl">сообщ.</span>
+                    </div>
+                    <div class="mini-stat-item">
+                        <span class="stat-val" id="stat-achievements">0</span>
+                        <span class="stat-lbl">достиг.</span>
+                    </div>
+                </div>
                 
                 <div class="timer-container" id="timerBlock" style="display: none;">
                     ⏱️ <span id="sessionTimer">00 сек.</span>
@@ -225,8 +311,24 @@
             </div>
         </div>
 
-        <div class="card" id="achievementsSection" style="display: none;">
-            <h2>🏆 Ваши достижения</h2>
+        <div class="tabs-nav">
+            <button class="tab-btn active" id="btn-tab-group" onclick="switchTab('group')">👥 Участники</button>
+            <button class="tab-btn" id="btn-tab-rating" onclick="switchTab('rating')">🏆 Рейтинг</button>
+            <button class="tab-btn" id="btn-tab-ach" onclick="switchTab('ach')">🎖️ Достижения</button>
+        </div>
+
+        <div class="card" id="tab-content-group">
+            <h2>👥 Монитор группы</h2>
+            <div id="groupList">Загрузка списка...</div>
+        </div>
+
+        <div class="card" id="tab-content-rating" style="display: none;">
+            <h2>🥇 ТОП студентов (по времени)</h2>
+            <div id="topStudentsList">Загрузка рейтинга...</div>
+        </div>
+
+        <div class="card" id="tab-content-ach" style="display: none;">
+            <h2>🏆 Ваши достижения (<span id="ach-counter-title">0/4</span>)</h2>
             <div class="achievements-grid">
                 <div class="ach-card" id="ach_early">
                     <span class="ach-icon">🌅</span>
@@ -256,16 +358,6 @@
         </div>
 
         <div class="card">
-            <h2>🥇 ТОП студентов (по времени)</h2>
-            <div id="topStudentsList">Загрузка рейтинга...</div>
-        </div>
-
-        <div class="card">
-            <h2>👥 Монитор группы</h2>
-            <div id="groupList">Загрузка списка...</div>
-        </div>
-
-        <div class="card">
             <h2>💬 Общий чат</h2>
             <div class="chat-container">
                 <div class="chat-messages" id="chatMessages">Загрузка чата...</div>
@@ -290,11 +382,21 @@
         let studyStartedAtLocal = null;
         let timerInterval = null;
 
-        // Локальный кеш данных пользователя для системы достижений
+        // Изменено под вашу новую JSONB колонку "stats"
         let userStats = {
-            total_study_time: 0, // в миллисекундах
-            achievements: [],    // массив id достижений
-            message_count: 0
+            total_time: 0,      // в секундах
+            sessions: 0,        // количество сессий
+            messages: 0,        // количество сообщений
+            achievements: []    // массив открытых id ачивок
+        };
+
+        // Логика переключения вкладок
+        window.switchTab = (tabName) => {
+            const tabs = ['group', 'rating', 'ach'];
+            tabs.forEach(t => {
+                document.getElementById(`tab-content-${t}`).style.display = t === tabName ? 'block' : 'none';
+                document.getElementById(`btn-tab-${t}`).classList.toggle('active', t === tabName);
+            });
         };
 
         window.signIn = async () => {
@@ -311,7 +413,7 @@
             if (currentUser) {
                 try {
                     await Promise.race([
-                        supabase.from('monitor').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети' }),
+                        supabase.from('monitor').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети', stats: userStats }),
                         new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1500))
                     ]);
                 } catch (e) { console.log("Принудительный выход"); }
@@ -331,11 +433,10 @@
 
             try {
                 if (!isStudyingLocal) {
-                    // НАЧАЛО УЧЕБЫ
                     studyStartedAtLocal = nowStr;
                     isStudyingLocal = true;
 
-                    // ПРОВЕРКА ДОСТИЖЕНИЯ: "Ранняя пташка" (вход до 8 утра)
+                    // Ачивка: "Ранняя пташка" (вход до 8 утра)
                     const currentHour = new Date().getHours();
                     if (currentHour < 8 && !userStats.achievements.includes('early')) {
                         userStats.achievements.push('early');
@@ -343,29 +444,27 @@
 
                     await saveUserProgress(name, '📚 В учебе', true, nowStr);
                 } else {
-                    // ЗАВЕРШЕНИЕ СЕССИИ
-                    const sessionDuration = new Date() - new Date(studyStartedAtLocal);
-                    userStats.total_study_time += sessionDuration;
+                    const sessionDurationSec = Math.floor((new Date() - new Date(studyStartedAtLocal)) / 1000);
+                    userStats.total_time = (userStats.total_time || 0) + sessionDurationSec;
+                    userStats.sessions = (userStats.sessions || 0) + 1;
 
-                    // ПРОВЕРКА ДОСТИЖЕНИЯ: "Марафонец" (сессия > 2 часов. Для тестов можно поставить > 10000мс)
-                    const twoHoursMs = 2 * 60 * 60 * 1000; 
-                    if (sessionDuration >= twoHoursMs && !userStats.achievements.includes('marathon')) {
+                    // Ачивка: "Марафонец" (сессия > 2 часов = 7200 сек)
+                    if (sessionDurationSec >= 7200 && !userStats.achievements.includes('marathon')) {
                         userStats.achievements.push('marathon');
                     }
 
-                    // ПРОВЕРКА ДОСТИЖЕНИЯ: "Легенда" (всего > 20 часов учебы)
-                    const twentyHoursMs = 20 * 60 * 60 * 1000;
-                    if (userStats.total_study_time >= twentyHoursMs && !userStats.achievements.includes('legend')) {
+                    // Ачивка: "Легенда" (суммарно > 20 часов = 72000 сек)
+                    if (userStats.total_time >= 72000 && !userStats.achievements.includes('legend')) {
                         userStats.achievements.push('legend');
                     }
 
                     isStudyingLocal = false;
                     studyStartedAtLocal = null;
 
-                    await saveUserProgress(name, '🏠 Дома', false, null);
+                    await saveUserProgress(name, '🟢 В сети', false, null);
                 }
                 updateMyUI();
-                renderAchievements();
+                renderMyStatsAndAchievements();
             } catch(e) { console.error(e); }
         };
 
@@ -374,8 +473,9 @@
             clearInterval(timerInterval);
             
             if (isStudyingLocal && studyStartedAtLocal) {
-                const sessionDuration = new Date() - new Date(studyStartedAtLocal);
-                userStats.total_study_time += sessionDuration;
+                const sessionDurationSec = Math.floor((new Date() - new Date(studyStartedAtLocal)) / 1000);
+                userStats.total_time = (userStats.total_time || 0) + sessionDurationSec;
+                userStats.sessions = (userStats.sessions || 0) + 1;
             }
 
             isStudyingLocal = false;
@@ -384,12 +484,10 @@
             try {
                 await saveUserProgress(currentUser.user_metadata.full_name || currentUser.email, '☕ Перерыв', false, null);
                 updateMyUI();
-                renderAchievements();
+                renderMyStatsAndAchievements();
             } catch(e) { console.error(e); }
         };
 
-        // Вспомогательная функция для обновления данных пользователя в БД monitor
-        // Для гибкости мы сохраняем новые поля внутри существующей структуры через JSON объект или выделенные метаданные
         async function saveUserProgress(name, statusText, isStudying, startTime) {
             await supabase.from('monitor').upsert({ 
                 id: currentUser.id, 
@@ -398,10 +496,11 @@
                 is_studying: isStudying,
                 study_started_at: startTime,
                 last_seen: new Date().toISOString(),
-                // Записываем статистику в служебное текстовое/json поле, если структура таблицы не имеет колонок,
-                // либо используем встроенное поле JSON или симулируем через расширение строки статуса
-                custom_stats: JSON.stringify(userStats) 
+                stats: userStats // Запись идет напрямую в jsonb колонку stats
             });
+            if(document.getElementById('userStatusLabel')) {
+                document.getElementById('userStatusLabel').innerText = statusText;
+            }
         }
 
         function updateMyUI() {
@@ -435,9 +534,28 @@
             return `${seconds} сек.`;
         }
 
-        function renderAchievements() {
+        // Обновление живых виджетов-счетчиков и ачивок на клиенте
+        function renderMyStatsAndAchievements() {
+            const totalSec = userStats.total_time || 0;
+            let timeStr = totalSec + "с";
+            if (totalSec >= 3600) {
+                timeStr = Math.floor(totalSec / 3600) + "ч " + Math.floor((totalSec % 3600) / 60) + "м";
+            } else if (totalSec >= 60) {
+                timeStr = Math.floor(totalSec / 60) + "м";
+            }
+
+            // Вывод в числовые блоки профиля
+            document.getElementById('stat-time').innerText = timeStr;
+            document.getElementById('stat-sessions').innerText = userStats.sessions || 0;
+            document.getElementById('stat-messages').innerText = userStats.messages || 0;
+            
+            const achArray = userStats.achievements || [];
+            document.getElementById('stat-achievements').innerText = achArray.length;
+            document.getElementById('ach-counter-title').innerText = `${achArray.length}/4`;
+
+            // Подсветка карточек
             document.querySelectorAll('.ach-card').forEach(card => card.classList.remove('unlocked'));
-            userStats.achievements.forEach(achId => {
+            achArray.forEach(achId => {
                 const el = document.getElementById(`ach_${achId}`);
                 if (el) el.classList.add('unlocked');
             });
@@ -454,22 +572,23 @@
 
                 const now = new Date();
                 
-                // Парсим статистику студентов для рейтинга
                 const parsedUsers = data.map(user => {
-                    let stats = { total_study_time: 0, achievements: [] };
-                    if (user.custom_stats) {
-                        try { stats = JSON.parse(user.custom_stats); } catch(e){}
+                    let stats = { total_time: 0, achievements: [], sessions: 0, messages: 0 };
+                    if (user.stats) {
+                        try { 
+                            stats = typeof user.stats === 'string' ? JSON.parse(user.stats) : user.stats; 
+                        } catch(e){}
                     }
-                    // Если студент учится прямо сейчас, прибавляем текущую сессию к его тотал-тайму на лету
-                    let dynamicTotal = stats.total_study_time || 0;
+                    // Динамический подсчет времени в миллисекундах для точности сортировки рейтинга
+                    let dynamicTotalMs = (stats.total_time || 0) * 1000;
                     if (user.is_studying && user.study_started_at) {
-                        dynamicTotal += (now - new Date(user.study_started_at));
+                        dynamicTotalMs += (now - new Date(user.study_started_at));
                     }
-                    return { ...user, dynamicTotal, achievementsCount: (stats.achievements || []).length };
+                    return { ...user, dynamicTotalMs, achievementsCount: (stats.achievements || []).length, statsData: stats };
                 });
 
-                // РЕНДЕР ТОП СТУДЕНТОВ (Сортировка по убыванию времени)
-                const sortedForTop = [...parsedUsers].sort((a, b) => b.dynamicTotal - a.dynamicTotal);
+                // РЕНДЕР ТОП СТУДЕНТОВ
+                const sortedForTop = [...parsedUsers].sort((a, b) => b.dynamicTotalMs - a.dynamicTotalMs);
                 topList.innerHTML = sortedForTop.slice(0, 5).map((user, index) => {
                     const medals = ['🥇', '🥈', '🥉', '🏅', '🎖️'];
                     const badge = medals[index] || `${index + 1}`;
@@ -478,9 +597,9 @@
                             <div class="rank-badge">${badge}</div>
                             <div class="top-details">
                                 <strong>${user.username}</strong>
-                                <span style="font-size:0.75rem; color:#7f8c8d;">Достижений: ${user.achievementsCount}</span>
+                                <span style="font-size:0.75rem; color:#7f8c8d;">Сессий: ${user.statsData.sessions || 0} • Достижений: ${user.achievementsCount}</span>
                             </div>
-                            <div class="top-time">${formatTime(user.dynamicTotal)}</div>
+                            <div class="top-time">${formatTime(user.dynamicTotalMs)}</div>
                         </div>
                     `;
                 }).join('');
@@ -530,20 +649,20 @@
             const txt = input.value.trim();
             input.value = '';
 
-            // Увеличиваем счетчик сообщений локально
-            userStats.message_count = (userStats.message_count || 0) + 1;
+            // Увеличиваем счетчик сообщений
+            userStats.messages = (userStats.messages || 0) + 1;
             
-            // ПРОВЕРКА ДОСТИЖЕНИЯ: "Активист" (написал 20 сообщений)
-            if (userStats.message_count >= 20 && !userStats.achievements.includes('activist')) {
+            // Ачивка: "Активист" (написал 20 сообщений)
+            if (userStats.messages >= 20 && !userStats.achievements.includes('activist')) {
                 userStats.achievements.push('activist');
-                renderAchievements();
             }
 
             try {
                 const name = currentUser.user_metadata.full_name || currentUser.email;
                 await supabase.from('messages').insert({ user_id: currentUser.id, username: name, text: txt });
-                // Сохраняем обновленный прогресс достижений
-                await supabase.from('monitor').update({ custom_stats: JSON.stringify(userStats) }).eq('id', currentUser.id);
+                // Сохраняем статистику в JSONB "stats"
+                await supabase.from('monitor').update({ stats: userStats }).eq('id', currentUser.id);
+                renderMyStatsAndAchievements();
             } catch(e) {}
         };
 
@@ -557,8 +676,8 @@
         supabase.auth.onAuthStateChange(async (event, session) => {
             const authSection = document.getElementById('authSection');
             const profileSection = document.getElementById('profileSection');
-            const achSection = document.getElementById('achievementsSection');
             const myInfo = document.getElementById('myInfo');
+            const userAvatar = document.getElementById('userAvatar');
             const chatInput = document.getElementById('chatInput');
             const chatSendBtn = document.getElementById('chatSendBtn');
 
@@ -566,10 +685,10 @@
                 currentUser = session.user;
                 if (authSection) authSection.style.display = 'none';
                 if (profileSection) profileSection.style.display = 'block';
-                if (achSection) achSection.style.display = 'block';
                 
                 const name = session.user.user_metadata.full_name || session.user.email;
                 if (myInfo) myInfo.innerText = name;
+                if (userAvatar) userAvatar.innerText = name.charAt(0).toUpperCase();
                 if (chatInput) chatInput.disabled = false;
                 if (chatSendBtn) chatSendBtn.disabled = false;
 
@@ -578,21 +697,24 @@
                     if (data && data.length > 0) {
                         isStudyingLocal = data[0].is_studying || false;
                         studyStartedAtLocal = data[0].study_started_at || null;
-                        if (data[0].custom_stats) {
-                            try { userStats = JSON.parse(data[0].custom_stats); } catch(e){}
+                        
+                        // Парсим данные именно из вашей новой колонки stats
+                        if (data[0].stats) {
+                            try { 
+                                userStats = typeof data[0].stats === 'string' ? JSON.parse(data[0].stats) : data[0].stats; 
+                            } catch(e){}
                         }
                     }
                 } catch(err) {}
                 
                 updateMyUI();
-                renderAchievements();
+                renderMyStatsAndAchievements();
             }
             
             fetchGroupAndRankings();
             fetchMessages();
         });
 
-        // Реалтайм подписки
         supabase.channel('monitor-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'monitor' }, () => { fetchGroupAndRankings(); }).subscribe();
         supabase.channel('chat-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { fetchMessages(); }).subscribe();
 
