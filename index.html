@@ -375,6 +375,7 @@
         const URL = 'https://utdywixvtzjsaqxtqxrt.supabase.co'; 
         const KEY = 'sb_publishable_6zjeZJ9xe6D41lPUqLgHug_MGno136_'; 
 
+        console.log("Инициализация Supabase...");
         const supabase = createClient(URL, KEY);
 
         let currentUser = null;
@@ -389,8 +390,9 @@
             achievements: []
         };
 
-        // БЕЗОПАСНАЯ функция переключения вкладок
+        // Отладочное переключение вкладок
         window.switchTab = (tabName) => {
+            console.log("Переключение на вкладку:", tabName);
             const tabs = ['group', 'rating', 'ach'];
             tabs.forEach(t => {
                 const contentEl = document.getElementById(`tab-content-${t}`);
@@ -398,31 +400,34 @@
                 
                 if (contentEl) {
                     contentEl.style.display = (t === tabName) ? 'block' : 'none';
+                } else {
+                    console.error(`Элемент tab-content-${t} НЕ НАЙДЕН в HTML!`);
                 }
+                
                 if (btnEl) {
                     btnEl.classList.toggle('active', t === tabName);
+                } else {
+                    console.error(`Кнопка btn-tab-${t} НЕ НАЙДЕНА в HTML!`);
                 }
             });
         };
 
         window.signIn = async () => {
+            console.log("Запуск авторизации через Google...");
             try {
                 await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: { redirectTo: window.location.origin + window.location.pathname }
                 });
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error("Ошибка авторизации:", err); }
         };
 
         window.signOut = async () => {
             clearInterval(timerInterval);
             if (currentUser) {
                 try {
-                    await Promise.race([
-                        supabase.from('monitor').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети', stats: userStats }),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1500))
-                    ]);
-                } catch (e) { console.log("Принудительный выход"); }
+                    await supabase.from('monitor').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети', stats: userStats });
+                } catch (e) { console.log("Принудительный выход из БД"); }
             }
             await supabase.auth.signOut();
             localStorage.clear();
@@ -441,34 +446,19 @@
                 if (!isStudyingLocal) {
                     studyStartedAtLocal = nowStr;
                     isStudyingLocal = true;
-
-                    const currentHour = new Date().getHours();
-                    if (currentHour < 8 && !userStats.achievements.includes('early')) {
-                        userStats.achievements.push('early');
-                    }
-
                     await saveUserProgress(name, '📚 В учебе', true, nowStr);
                 } else {
                     const sessionDurationSec = Math.floor((new Date() - new Date(studyStartedAtLocal)) / 1000);
                     userStats.total_time = (userStats.total_time || 0) + sessionDurationSec;
                     userStats.sessions = (userStats.sessions || 0) + 1;
 
-                    if (sessionDurationSec >= 7200 && !userStats.achievements.includes('marathon')) {
-                        userStats.achievements.push('marathon');
-                    }
-
-                    if (userStats.total_time >= 72000 && !userStats.achievements.includes('legend')) {
-                        userStats.achievements.push('legend');
-                    }
-
                     isStudyingLocal = false;
                     studyStartedAtLocal = null;
-
                     await saveUserProgress(name, '🟢 В сети', false, null);
                 }
                 updateMyUI();
                 renderMyStatsAndAchievements();
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error("Ошибка в toggleStudy:", e); }
         };
 
         window.setBreak = async () => {
@@ -492,17 +482,20 @@
         };
 
         async function saveUserProgress(name, statusText, isStudying, startTime) {
-            await supabase.from('monitor').upsert({ 
-                id: currentUser.id, 
-                username: name, 
-                status: statusText,
-                is_studying: isStudying,
-                study_started_at: startTime,
-                last_seen: new Date().toISOString(),
-                stats: userStats
-            });
-            if(document.getElementById('userStatusLabel')) {
-                document.getElementById('userStatusLabel').innerText = statusText;
+            try {
+                await supabase.from('monitor').upsert({ 
+                    id: currentUser.id, 
+                    username: name, 
+                    status: statusText,
+                    is_studying: isStudying,
+                    study_started_at: startTime,
+                    last_seen: new Date().toISOString(),
+                    stats: userStats
+                });
+                const lbl = document.getElementById('userStatusLabel');
+                if(lbl) lbl.innerText = statusText;
+            } catch (err) {
+                console.error("Не удалось сохранить прогресс в Supabase:", err);
             }
         }
 
@@ -538,27 +531,29 @@
         }
 
         function renderMyStatsAndAchievements() {
-            const totalSec = userStats.total_time || 0;
-            let timeStr = totalSec + "с";
-            if (totalSec >= 3600) {
-                timeStr = Math.floor(totalSec / 3600) + "ч " + Math.floor((totalSec % 3600) / 60) + "м";
-            } else if (totalSec >= 60) {
-                timeStr = Math.floor(totalSec / 60) + "м";
-            }
+            try {
+                const totalSec = userStats.total_time || 0;
+                let timeStr = totalSec + "с";
+                if (totalSec >= 3600) {
+                    timeStr = Math.floor(totalSec / 3600) + "ч " + Math.floor((totalSec % 3600) / 60) + "м";
+                } else if (totalSec >= 60) {
+                    timeStr = Math.floor(totalSec / 60) + "м";
+                }
 
-            if(document.getElementById('stat-time')) document.getElementById('stat-time').innerText = timeStr;
-            if(document.getElementById('stat-sessions')) document.getElementById('stat-sessions').innerText = userStats.sessions || 0;
-            if(document.getElementById('stat-messages')) document.getElementById('stat-messages').innerText = userStats.messages || 0;
-            
-            const achArray = userStats.achievements || [];
-            if(document.getElementById('stat-achievements')) document.getElementById('stat-achievements').innerText = achArray.length;
-            if(document.getElementById('ach-counter-title')) document.getElementById('ach-counter-title').innerText = `${achArray.length}/4`;
+                if(document.getElementById('stat-time')) document.getElementById('stat-time').innerText = timeStr;
+                if(document.getElementById('stat-sessions')) document.getElementById('stat-sessions').innerText = userStats.sessions || 0;
+                if(document.getElementById('stat-messages')) document.getElementById('stat-messages').innerText = userStats.messages || 0;
+                
+                const achArray = userStats.achievements || [];
+                if(document.getElementById('stat-achievements')) document.getElementById('stat-achievements').innerText = achArray.length;
+                if(document.getElementById('ach-counter-title')) document.getElementById('ach-counter-title').innerText = `${achArray.length}/4`;
 
-            document.querySelectorAll('.ach-card').forEach(card => card.classList.remove('unlocked'));
-            achArray.forEach(achId => {
-                const el = document.getElementById(`ach_${achId}`);
-                if (el) el.classList.add('unlocked');
-            });
+                document.querySelectorAll('.ach-card').forEach(card => card.classList.remove('unlocked'));
+                achArray.forEach(achId => {
+                    const el = document.getElementById(`ach_${achId}`);
+                    if (el) el.classList.add('unlocked');
+                });
+            } catch (e) { console.error("Ошибка рендеринга статистики:", e); }
         }
 
         async function fetchGroupAndRankings() {
@@ -568,10 +563,9 @@
 
             try {
                 const { data, error } = await supabase.from('monitor').select('*').order('username', { ascending: true });
-                if (error) return;
+                if (error) throw error;
 
                 const now = new Date();
-                
                 const parsedUsers = data.map(user => {
                     let stats = { total_time: 0, achievements: [], sessions: 0, messages: 0 };
                     if (user.stats) {
@@ -622,7 +616,7 @@
                     `;
                 }).join('');
 
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Ошибка при получении данных группы:", e); }
         }
 
         async function fetchMessages() {
@@ -645,12 +639,7 @@
 
             const txt = input.value.trim();
             input.value = '';
-
             userStats.messages = (userStats.messages || 0) + 1;
-            
-            if (userStats.messages >= 20 && !userStats.achievements.includes('activist')) {
-                userStats.achievements.push('activist');
-            }
 
             try {
                 const name = currentUser.user_metadata.full_name || currentUser.email;
@@ -667,7 +656,9 @@
 
         document.getElementById('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
 
+        // Отслеживание сессии пользователя
         supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log("Supabase статус изменился:", event);
             const authSection = document.getElementById('authSection');
             const profileSection = document.getElementById('profileSection');
             const myInfo = document.getElementById('myInfo');
@@ -677,6 +668,7 @@
 
             if (session) {
                 currentUser = session.user;
+                console.log("Пользователь определен:", currentUser.email);
                 if (authSection) authSection.style.display = 'none';
                 if (profileSection) profileSection.style.display = 'block';
                 
@@ -691,17 +683,18 @@
                     if (data && data.length > 0) {
                         isStudyingLocal = data[0].is_studying || false;
                         studyStartedAtLocal = data[0].study_started_at || null;
-                        
                         if (data[0].stats) {
                             try { 
                                 userStats = typeof data[0].stats === 'string' ? JSON.parse(data[0].stats) : data[0].stats; 
                             } catch(e){}
                         }
                     }
-                } catch(err) {}
+                } catch(err) { console.error("Ошибка получения профиля:", err); }
                 
                 updateMyUI();
                 renderMyStatsAndAchievements();
+            } else {
+                console.log("Сессия отсутствует (пользователь не авторизован)");
             }
             
             fetchGroupAndRankings();
