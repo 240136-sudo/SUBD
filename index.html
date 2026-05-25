@@ -224,7 +224,7 @@
         .ach-icon { font-size: 1.5rem; }
         .ach-title { font-weight: bold; font-size: 0.95rem; color: #fff; }
         .ach-desc { font-size: 0.75rem; color: #7f8c8d; }
-        .ach-type { font-size: 0.7..rem; font-weight: bold; text-transform: uppercase; color: #00ffcc; }
+        .ach-type { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; color: #00ffcc; } /* ИСПРАВЛЕНО: была опечатка 0.7..rem */
 
         /* Чат */
         .chat-container { display: flex; flex-direction: column; }
@@ -392,7 +392,6 @@
 
         // Переключение вкладок
         window.switchTab = (tabName) => {
-            console.log("Переключение на вкладку:", tabName);
             const tabs = ['group', 'rating', 'ach'];
             tabs.forEach(t => {
                 const contentEl = document.getElementById(`tab-content-${t}`);
@@ -408,7 +407,6 @@
         };
 
         window.signIn = async () => {
-            console.log("Запуск авторизации через Google...");
             try {
                 await supabase.auth.signInWithOAuth({
                     provider: 'google',
@@ -434,7 +432,6 @@
         function checkAchievements(sessionDurationSec = 0) {
             const currentAchievements = new Set(userStats.achievements || []);
             
-            // 1. Ранняя пташка: Старт до 8 утра
             if (isStudyingLocal && studyStartedAtLocal) {
                 const startHour = new Date(studyStartedAtLocal).getHours();
                 if (startHour < 8) {
@@ -442,17 +439,14 @@
                 }
             }
 
-            // 2. Марафонец: Одиночная сессия более 2 часов (7200 сек)
             if (sessionDurationSec >= 7200) {
                 currentAchievements.add('marathon');
             }
 
-            // 3. Активист: Больше 20 сообщений
             if ((userStats.messages || 0) >= 20) {
                 currentAchievements.add('activist');
             }
 
-            // 4. Легенда: Суммарное время более 20 часов (72000 сек)
             if ((userStats.total_time || 0) >= 72000) {
                 currentAchievements.add('legend');
             }
@@ -471,7 +465,7 @@
                 if (!isStudyingLocal) {
                     studyStartedAtLocal = nowStr;
                     isStudyingLocal = true;
-                    checkAchievements(0); // Проверяем время захода для "Ранней пташки"
+                    checkAchievements(0); 
                     await saveUserProgress(name, '📚 В учебе', true, nowStr);
                 } else {
                     const sessionDurationSec = Math.floor((new Date() - new Date(studyStartedAtLocal)) / 1000);
@@ -480,7 +474,7 @@
 
                     isStudyingLocal = false;
                     studyStartedAtLocal = null;
-                    checkAchievements(sessionDurationSec); // Проверяем на Марафонца и Легенду
+                    checkAchievements(sessionDurationSec); 
                     await saveUserProgress(name, '🟢 В сети', false, null);
                 }
                 updateMyUI();
@@ -513,7 +507,7 @@
             try {
                 await supabase.from('monitor').upsert({ 
                     id: currentUser.id, 
-                    name: name, // ИСПРАВЛЕНО: username изменен на name
+                    name: name, 
                     status: statusText,
                     is_studying: isStudying,
                     study_started_at: startTime,
@@ -590,7 +584,6 @@
             if (!list || !topList) return;
 
             try {
-                // ИСПРАВЛЕНО: сортировка идет по полю name вместо username
                 const { data, error } = await supabase.from('monitor').select('*').order('name', { ascending: true });
                 if (error) throw error;
 
@@ -602,6 +595,9 @@
                             stats = typeof user.stats === 'string' ? JSON.parse(user.stats) : user.stats; 
                         } catch(e){}
                     }
+                    // Защита от пустых значений объекта stats
+                    if (!stats) stats = { total_time: 0, achievements: [], sessions: 0, messages: 0 };
+
                     let dynamicTotalMs = (stats.total_time || 0) * 1000;
                     if (user.is_studying && user.study_started_at) {
                         dynamicTotalMs += (now - new Date(user.study_started_at));
@@ -679,11 +675,11 @@
             const txt = input.value.trim();
             input.value = '';
             userStats.messages = (userStats.messages || 0) + 1;
-            checkAchievements(0); // Проверяем, не открылось ли достижение за сообщения
+            checkAchievements(0); 
 
             try {
                 const name = currentUser.user_metadata.full_name || currentUser.email;
-                await supabase.from('messages').insert({ user_id: currentUser.id, username: name, text: txt });
+                await supabase.from('messages').insert([{ user_id: currentUser.id, username: name, text: txt }]); // Исправлено под синтаксис Supabase v2 (массив объектов)
                 await supabase.from('monitor').update({ stats: userStats }).eq('id', currentUser.id);
                 renderMyStatsAndAchievements();
             } catch(e) {}
@@ -708,7 +704,6 @@
 
             if (session) {
                 currentUser = session.user;
-                console.log("Пользователь определен:", currentUser.email);
                 if (authSection) authSection.style.display = 'none';
                 if (profileSection) profileSection.style.display = 'block';
                 
@@ -718,23 +713,26 @@
                 if (chatInput) chatInput.disabled = false;
                 if (chatSendBtn) chatSendBtn.disabled = false;
 
-                try {
-                    const { data } = await supabase.from('monitor').select('*').eq('id', currentUser.id);
-                    if (data && data.length > 0) {
-                        isStudyingLocal = data[0].is_studying || false;
-                        studyStartedAtLocal = data[0].study_started_at || null;
-                        if (data[0].stats) {
-                            try { 
-                                userStats = typeof data[0].stats === 'string' ? JSON.parse(data[0].stats) : data[0].stats; 
-                            } catch(e){}
+                // Загружаем данные только один раз при INITIAL_SESSION или SIGN_IN, чтобы не зацикливать базу данных
+                if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+                    try {
+                        const { data } = await supabase.from('monitor').select('*').eq('id', currentUser.id);
+                        if (data && data.length > 0) {
+                            isStudyingLocal = data[0].is_studying || false;
+                            studyStartedAtLocal = data[0].study_started_at || null;
+                            if (data[0].stats) {
+                                try { 
+                                    userStats = typeof data[0].stats === 'string' ? JSON.parse(data[0].stats) : data[0].stats; 
+                                } catch(e){}
+                            }
                         }
-                    }
-                } catch(err) { console.error("Ошибка получения профиля:", err); }
-                
-                updateMyUI();
-                renderMyStatsAndAchievements();
+                    } catch(err) { console.error("Ошибка получения профиля:", err); }
+                    
+                    updateMyUI();
+                    renderMyStatsAndAchievements();
+                }
             } else {
-                console.log("Сессия отсутствует (пользователь не авторизован)");
+                console.log("Сессия отсутствует");
             }
             
             fetchGroupAndRankings();
