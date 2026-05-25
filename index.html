@@ -390,7 +390,7 @@
             achievements: []
         };
 
-        // Отладочное переключение вкладок
+        // Переключение вкладок
         window.switchTab = (tabName) => {
             console.log("Переключение на вкладку:", tabName);
             const tabs = ['group', 'rating', 'ach'];
@@ -400,14 +400,9 @@
                 
                 if (contentEl) {
                     contentEl.style.display = (t === tabName) ? 'block' : 'none';
-                } else {
-                    console.error(`Элемент tab-content-${t} НЕ НАЙДЕН в HTML!`);
                 }
-                
                 if (btnEl) {
                     btnEl.classList.toggle('active', t === tabName);
-                } else {
-                    console.error(`Кнопка btn-tab-${t} НЕ НАЙДЕНА в HTML!`);
                 }
             });
         };
@@ -435,6 +430,36 @@
             window.location.reload();
         };
 
+        // Проверка и начисление ачивок
+        function checkAchievements(sessionDurationSec = 0) {
+            const currentAchievements = new Set(userStats.achievements || []);
+            
+            // 1. Ранняя пташка: Старт до 8 утра
+            if (isStudyingLocal && studyStartedAtLocal) {
+                const startHour = new Date(studyStartedAtLocal).getHours();
+                if (startHour < 8) {
+                    currentAchievements.add('early');
+                }
+            }
+
+            // 2. Марафонец: Одиночная сессия более 2 часов (7200 сек)
+            if (sessionDurationSec >= 7200) {
+                currentAchievements.add('marathon');
+            }
+
+            // 3. Активист: Больше 20 сообщений
+            if ((userStats.messages || 0) >= 20) {
+                currentAchievements.add('activist');
+            }
+
+            // 4. Легенда: Суммарное время более 20 часов (72000 сек)
+            if ((userStats.total_time || 0) >= 72000) {
+                currentAchievements.add('legend');
+            }
+
+            userStats.achievements = Array.from(currentAchievements);
+        }
+
         window.toggleStudy = async () => {
             if (!currentUser) return alert("Сначала войдите!");
             clearInterval(timerInterval);
@@ -446,6 +471,7 @@
                 if (!isStudyingLocal) {
                     studyStartedAtLocal = nowStr;
                     isStudyingLocal = true;
+                    checkAchievements(0); // Проверяем время захода для "Ранней пташки"
                     await saveUserProgress(name, '📚 В учебе', true, nowStr);
                 } else {
                     const sessionDurationSec = Math.floor((new Date() - new Date(studyStartedAtLocal)) / 1000);
@@ -454,6 +480,7 @@
 
                     isStudyingLocal = false;
                     studyStartedAtLocal = null;
+                    checkAchievements(sessionDurationSec); // Проверяем на Марафонца и Легенду
                     await saveUserProgress(name, '🟢 В сети', false, null);
                 }
                 updateMyUI();
@@ -469,6 +496,7 @@
                 const sessionDurationSec = Math.floor((new Date() - new Date(studyStartedAtLocal)) / 1000);
                 userStats.total_time = (userStats.total_time || 0) + sessionDurationSec;
                 userStats.sessions = (userStats.sessions || 0) + 1;
+                checkAchievements(sessionDurationSec);
             }
 
             isStudyingLocal = false;
@@ -588,7 +616,7 @@
                         <div class="top-student-item">
                             <div class="rank-badge">${badge}</div>
                             <div class="top-details">
-                                <strong>${user.username}</strong>
+                                <strong>${user.username || 'Неизвестный'}</strong>
                                 <span style="font-size:0.75rem; color:#7f8c8d;">Сессий: ${user.statsData.sessions || 0} • Достижений: ${user.achievementsCount}</span>
                             </div>
                             <div class="top-time">${formatTime(user.dynamicTotalMs)}</div>
@@ -606,7 +634,7 @@
                         <div class="user-item">
                             <div class="${statusDotClass}"></div>
                             <div class="user-details">
-                                <strong>${user.username}</strong>
+                                <strong>${user.username || 'Неизвестный'}</strong>
                                 <small>${studyTimeText}</small>
                             </div>
                             <div class="user-meta">
@@ -627,7 +655,7 @@
                 if (error) return;
                 
                 chatBox.innerHTML = data.map(msg => `
-                    <div class="chat-message"><strong>${msg.username}:</strong> ${msg.text}</div>
+                    <div class="chat-message"><strong>${msg.username || 'Аноним'}:</strong> ${msg.text}</div>
                 `).join('');
                 chatBox.scrollTop = chatBox.scrollHeight;
             } catch (e) {}
@@ -640,6 +668,7 @@
             const txt = input.value.trim();
             input.value = '';
             userStats.messages = (userStats.messages || 0) + 1;
+            checkAchievements(0); // Проверяем, не открылось ли достижение за сообщения
 
             try {
                 const name = currentUser.user_metadata.full_name || currentUser.email;
