@@ -224,7 +224,7 @@
         .ach-icon { font-size: 1.5rem; }
         .ach-title { font-weight: bold; font-size: 0.95rem; color: #fff; }
         .ach-desc { font-size: 0.75rem; color: #7f8c8d; }
-        .ach-type { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; color: #00ffcc; } /* ИСПРАВЛЕНО: была опечатка 0.7..rem */
+        .ach-type { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; color: #00ffcc; }
 
         /* Чат */
         .chat-container { display: flex; flex-direction: column; }
@@ -419,7 +419,7 @@
             clearInterval(timerInterval);
             if (currentUser) {
                 try {
-                    await supabase.from('monitor').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети', stats: userStats });
+                    await supabase.from('monitors').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети', stats: userStats });
                 } catch (e) { console.log("Принудительный выход из БД"); }
             }
             await supabase.auth.signOut();
@@ -505,7 +505,7 @@
 
         async function saveUserProgress(name, statusText, isStudying, startTime) {
             try {
-                await supabase.from('monitor').upsert({ 
+                await supabase.from('monitors').upsert({ 
                     id: currentUser.id, 
                     name: name, 
                     status: statusText,
@@ -584,7 +584,7 @@
             if (!list || !topList) return;
 
             try {
-                const { data, error } = await supabase.from('monitor').select('*').order('name', { ascending: true });
+                const { data, error } = await supabase.from('monitors').select('*').order('name', { ascending: true });
                 if (error) throw error;
 
                 const now = new Date();
@@ -595,7 +595,6 @@
                             stats = typeof user.stats === 'string' ? JSON.parse(user.stats) : user.stats; 
                         } catch(e){}
                     }
-                    // Защита от пустых значений объекта stats
                     if (!stats) stats = { total_time: 0, achievements: [], sessions: 0, messages: 0 };
 
                     let dynamicTotalMs = (stats.total_time || 0) * 1000;
@@ -648,7 +647,7 @@
             const chatBox = document.getElementById('chatMessages');
             if (!chatBox) return;
             try {
-                const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true }).limit(50);
+                const { data, error } = await supabase.from('messagess').select('*').order('created_at', { ascending: true }).limit(50);
                 if (error) {
                     chatBox.innerHTML = '<div class="chat-message" style="color: #7f8c8d;">Нет сообщений</div>';
                     return;
@@ -679,15 +678,15 @@
 
             try {
                 const name = currentUser.user_metadata.full_name || currentUser.email;
-                await supabase.from('messages').insert([{ user_id: currentUser.id, username: name, text: txt }]); // Исправлено под синтаксис Supabase v2 (массив объектов)
-                await supabase.from('monitor').update({ stats: userStats }).eq('id', currentUser.id);
+                await supabase.from('messagess').insert([{ user_id: currentUser.id, username: name, text: txt }]); 
+                await supabase.from('monitors').update({ stats: userStats }).eq('id', currentUser.id);
                 renderMyStatsAndAchievements();
             } catch(e) {}
         };
 
         async function sendPing() {
             if (!currentUser) return;
-            try { await supabase.from('monitor').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id); } catch(e) {}
+            try { await supabase.from('monitors').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id); } catch(e) {}
         }
 
         document.getElementById('chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
@@ -713,10 +712,9 @@
                 if (chatInput) chatInput.disabled = false;
                 if (chatSendBtn) chatSendBtn.disabled = false;
 
-                // Загружаем данные только один раз при INITIAL_SESSION или SIGN_IN, чтобы не зацикливать базу данных
                 if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
                     try {
-                        const { data } = await supabase.from('monitor').select('*').eq('id', currentUser.id);
+                        const { data } = await supabase.from('monitors').select('*').eq('id', currentUser.id);
                         if (data && data.length > 0) {
                             isStudyingLocal = data[0].is_studying || false;
                             studyStartedAtLocal = data[0].study_started_at || null;
@@ -739,8 +737,8 @@
             fetchMessages();
         });
 
-        supabase.channel('monitor-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'monitor' }, () => { fetchGroupAndRankings(); }).subscribe();
-        supabase.channel('chat-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { fetchMessages(); }).subscribe();
+        supabase.channel('monitor-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'monitors' }, () => { fetchGroupAndRankings(); }).subscribe();
+        supabase.channel('chat-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messagess' }, () => { fetchMessages(); }).subscribe();
 
         setInterval(fetchGroupAndRankings, 15000);
         setInterval(sendPing, 30000);   
