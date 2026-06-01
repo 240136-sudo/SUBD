@@ -419,7 +419,21 @@
             clearInterval(timerInterval);
             if (currentUser) {
                 try {
-                    await supabase.from('monitors').upsert({ id: currentUser.id, is_studying: false, status: '💤 Не в сети', stats: userStats });
+                    // Если выходим во время учебы — закроем сессию перед выходом
+                    if (isStudyingLocal && studyStartedAtLocal) {
+                        const sessionDurationSec = Math.floor((new Date() - new Date(studyStartedAtLocal)) / 1000);
+                        userStats.total_time = (userStats.total_time || 0) + sessionDurationSec;
+                        userStats.sessions = (userStats.sessions || 0) + 1;
+                        checkAchievements(sessionDurationSec);
+                    }
+                    await supabase.from('monitors').upsert({ 
+                        id: currentUser.id, 
+                        is_studying: false, 
+                        status: '💤 Не в сети', 
+                        stats: userStats,
+                        study_started_at: null,
+                        last_seen: new Date().toISOString()
+                    });
                 } catch (e) { console.log("Принудительный выход из БД"); }
             }
             await supabase.auth.signOut();
@@ -439,7 +453,7 @@
                 }
             }
 
-            if (sessionDurationSec >= 7200) {
+            if (sessionDurationSec >= 7200) { // 2 часа = 7200 сек
                 currentAchievements.add('marathon');
             }
 
@@ -447,7 +461,7 @@
                 currentAchievements.add('activist');
             }
 
-            if ((userStats.total_time || 0) >= 72000) {
+            if ((userStats.total_time || 0) >= 72000) { // 20 часов = 72000 сек
                 currentAchievements.add('legend');
             }
 
@@ -597,6 +611,7 @@
                     }
                     if (!stats) stats = { total_time: 0, achievements: [], sessions: 0, messages: 0 };
 
+                    // Вычисление динамического времени прямо во время активной сессии
                     let dynamicTotalMs = (stats.total_time || 0) * 1000;
                     if (user.is_studying && user.study_started_at) {
                         dynamicTotalMs += (now - new Date(user.study_started_at));
@@ -604,6 +619,7 @@
                     return { ...user, dynamicTotalMs, achievementsCount: (stats.achievements || []).length, statsData: stats };
                 });
 
+                // Сортировка по времени учебы (Рейтинг)
                 const sortedForTop = [...parsedUsers].sort((a, b) => b.dynamicTotalMs - a.dynamicTotalMs);
                 topList.innerHTML = sortedForTop.slice(0, 5).map((user, index) => {
                     const medals = ['🥇', '🥈', '🥉', '🏅', '🎖️'];
@@ -620,6 +636,7 @@
                     `;
                 }).join('');
 
+                // Список группы (Участники)
                 list.innerHTML = parsedUsers.map(user => {
                     const lastSeenDate = user.last_seen ? new Date(user.last_seen) : null;
                     const isOnline = lastSeenDate && (now - lastSeenDate < 90000); 
@@ -647,7 +664,8 @@
             const chatBox = document.getElementById('chatMessages');
             if (!chatBox) return;
             try {
-                const { data, error } = await supabase.from('messagess').select('*').order('created_at', { ascending: true }).limit(50);
+                // Изменено название таблицы с 'messagess' на нормальное 'messages'
+                const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: true }).limit(50);
                 if (error) {
                     chatBox.innerHTML = '<div class="chat-message" style="color: #7f8c8d;">Нет сообщений</div>';
                     return;
@@ -678,7 +696,9 @@
 
             try {
                 const name = currentUser.user_metadata.full_name || currentUser.email;
-                await supabase.from('messagess').insert([{ user_id: currentUser.id, username: name, text: txt }]); 
+                // Отправляем сообщение в чат
+                await supabase.from('messages').insert([{ user_id: currentUser.id, username: name, text: txt }]); 
+                // Сразу же обновляем статистику сообщений юзера в базе данных
                 await supabase.from('monitors').update({ stats: userStats }).eq('id', currentUser.id);
                 renderMyStatsAndAchievements();
             } catch(e) {}
@@ -737,8 +757,9 @@
             fetchMessages();
         });
 
+        // Слушаем изменения в реальном времени
         supabase.channel('monitor-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'monitors' }, () => { fetchGroupAndRankings(); }).subscribe();
-        supabase.channel('chat-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messagess' }, () => { fetchMessages(); }).subscribe();
+        supabase.channel('chat-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => { fetchMessages(); }).subscribe();
 
         setInterval(fetchGroupAndRankings, 15000);
         setInterval(sendPing, 30000);   
